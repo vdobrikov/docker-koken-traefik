@@ -1,0 +1,53 @@
+version: '3'
+
+services:
+  # The reverse proxy service (Traefik)
+  reverse-proxy:
+    image: traefik  # The official Traefik docker image
+    restart: unless-stopped
+    command: --api --docker  # Enables the web UI and tells Traefik to listen to docker
+    restart: unless-stopped
+    ports:
+      - "80:80"      # The HTTP port
+      - "443:443"      # The HTTPS port
+      - "8080:8080"  # The Web UI (enabled by --api)
+    networks:
+      - web
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # So that Traefik can listen to the Docker events
+      - ./traefik.toml:/traefik.toml
+      - ./acme.json:/acme.json
+  koken:
+    image: nicokaiser/koken:php7.1-apache
+    restart: unless-stopped
+    hostname: ${DOMAIN}
+    networks:
+      - web
+      - default
+    volumes:
+      - ./data/koken/www:/var/www/html
+    depends_on:
+      - mariadb
+    labels:
+      - "traefik.docker.network=web" 
+      # - "traefik.frontend.rule=Host:localhost"
+      - "traefik.frontend.rule=Host:${DOMAIN},www.${DOMAIN}"
+      - "traefik.enable=true"
+      - "traefik.protocol=http"
+      - "traefik.port=80"
+  mariadb:
+    image: mariadb
+    restart: unless-stopped
+    volumes:
+      - ./data/koken/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+    labels:
+      - "traefik.enable=false"
+
+# Create a network before using this file:
+# Local env (dev): 'docker create network <YOUR_NETWORK>', i.e. <YOUR_NETWORK>=proxy
+# Swarm env (prod): 'docker create network --driver overlay <YOUR_NETWORK>'
+networks:
+  web:
+    external: true
