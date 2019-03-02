@@ -18,36 +18,26 @@ services:
       - ./traefik.toml:/traefik.toml
       - ./acme.json:/acme.json
   koken:
-    image: nicokaiser/koken:php7.1-apache
+    image: koken/koken-lemp
     restart: unless-stopped
     hostname: ${DOMAIN}
     networks:
       - web
       - default
     volumes:
-      - ./data/koken/www:/var/www/html
-    depends_on:
-      - mariadb
+      - ./data/koken/www:/usr/share/nginx/www
+      - ./data/koken/mysql:/var/lib/mysql
     labels:
       - "traefik.docker.network=web" 
       # - "traefik.frontend.rule=Host:localhost"
-      - "traefik.frontend.rule=Host:${DOMAIN},www.${DOMAIN}"
+      - "traefik.frontend.rule=Host:${DOMAIN}"
       - "traefik.enable=true"
       - "traefik.protocol=http"
       - "traefik.port=80"
-  mariadb:
-    image: mariadb
-    restart: unless-stopped
-    volumes:
-      - ./data/koken/mysql:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
-    labels:
-      - "traefik.enable=false"
 
 # Create a network before using this file:
-# Local env (dev): 'docker create network <YOUR_NETWORK>', i.e. <YOUR_NETWORK>=proxy
-# Swarm env (prod): 'docker create network --driver overlay <YOUR_NETWORK>'
+# Local env (dev): 'docker network create <YOUR_NETWORK>', i.e. <YOUR_NETWORK>=proxy
+# Swarm env (prod): 'docker network create --driver overlay <YOUR_NETWORK>'
 networks:
   web:
     external: true
